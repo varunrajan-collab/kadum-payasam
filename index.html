@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feelings Explorer</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        /* Set up the body with a vibrant gradient background and a smooth transition for all elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: all 0.5s ease-in-out;
+            color: #1f2937;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+        }
+
+        /* Define the gradient animation for a smooth, flowing effect */
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Custom styling for the emotion orbs and cards */
+        .orb-card, .emotion-button, .action-button, .back-button {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .orb-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Define specific colors for the orbs */
+        .orb-calm { background-color: #64748b; }
+        .orb-happy { background-color: #eab308; }
+        .orb-sad { background-color: #3b82f6; }
+        .orb-energetic { background-color: #ef4444; }
+        .orb-anxious { background-color: #a855f7; }
+        .orb-bored { background-color: #4b5563; }
+
+        /* Custom styling for the message box */
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Fade-in effect for the message box */
+        .message-box.show {
+            opacity: 1;
+        }
+        
+    </style>
+</head>
+<body class="p-8 md:p-12 lg:p-16 flex flex-col items-center justify-center min-h-screen">
+
+    <!-- Main container for the app sections -->
+    <div class="max-w-4xl w-full p-8 bg-white rounded-2xl shadow-xl flex flex-col items-center text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-8 text-gray-800">Feelings Explorer</h1>
+
+        <!-- Message box for user feedback (e.g., "Copied!") -->
+        <div id="message-box" class="message-box"></div>
+
+        <!-- Section A: The Discovery -->
+        <section id="discovery-section" class="w-full">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700">How are you feeling today?</h2>
+            <p class="mb-8 text-gray-600">Pick a broad category to begin your exploration.</p>
+
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                <!-- Orb 1: Calm (Updated with Emoji) -->
+                <div data-category="calm" class="orb-card p-6 rounded-2xl flex flex-col items-center justify-center orb-calm text-white text-center shadow-lg">
+                    <span class="text-6xl mb-2">😌</span>
+                    <span class="text-lg font-medium mt-2">Calm</span>
+                </div>
+
+                <!-- Orb 2: Happy -->
+                <div data-category="happy" class="orb-card p-6 rounded-2xl flex flex-col items-center justify-center orb-happy text-white text-center shadow-lg">
+                    <span class="text-6xl mb-2">😄</span>
+                    <span class="text-lg font-medium mt-2">Happy</span>
+                </div>
+
+                <!-- Orb 3: Sad -->
+                <div data-category="sad" class="orb-card p-6 rounded-2xl flex flex-col items-center justify-center orb-sad text-white text-center shadow-lg">
+                    <span class="text-6xl mb-2">😢</span>
+                    <span class="text-lg font-medium mt-2">Sad</span>
+                </div>
+                
+                <!-- Orb 4: Energetic -->
+                <div data-category="energetic" class="orb-card p-6 rounded-2xl flex flex-col items-center justify-center orb-energetic text-white text-center shadow-lg">
+                    <span class="text-6xl mb-2">⚡️</span>
+                    <span class="text-lg font-medium mt-2">Energetic</span>
+                </div>
+
+                <!-- Orb 5: Anxious (Updated with Emoji) -->
+                <div data-category="anxious" class="orb-card p-6 rounded-2xl flex flex-col items-center justify-center orb-anxious text-white text-center shadow-lg">
+                    <span class="text-6xl mb-2">🌀</span>
+                    <span class="text-lg font-medium mt-2">Anxious</span>
+                </div>
+
+                <!-- Orb 6: Bored -->
+                <div data-category="bored" class="orb-card p-6 rounded-2xl flex flex-col items-center justify-center orb-bored text-white text-center shadow-lg">
+                    <span class="text-6xl mb-2">🥱</span>
+                    <span class="text-lg font-medium mt-2">Bored</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section B: The Naming -->
+        <section id="naming-section" class="w-full hidden">
+            <h2 id="naming-title" class="text-2xl font-semibold mb-6 text-gray-700"></h2>
+            <p class="mb-8 text-gray-600">Now, pick a word that best describes your feeling.</p>
+
+            <div id="word-cloud" class="flex flex-wrap justify-center gap-4 mb-6">
+                <!-- Emotion words will be populated here by JavaScript -->
+            </div>
+
+            <button id="back-to-discovery" class="back-button px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300">
+                &larr; Back
+            </button>
+        </section>
+
+        <!-- Section C: The Reflection -->
+        <section id="reflection-section" class="w-full hidden">
+            <h2 id="reflection-title" class="text-2xl font-semibold mb-6 text-gray-700"></h2>
+            <p id="reflection-prompt" class="mb-6 text-gray-600"></p>
+
+            <textarea id="journal-area" rows="8" class="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 transition duration-300 mb-6"></textarea>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-4">
+                <button id="get-insight-button" class="action-button px-8 py-3 bg-fuchsia-600 text-white rounded-xl font-medium hover:bg-fuchsia-700 shadow-lg">
+                    ✨ Get Reflection
+                </button>
+            </div>
+
+            <!-- Container for the reflection response (no longer from API) -->
+            <div id="reflection-response-container" class="mt-4 hidden">
+                <h3 class="text-xl font-semibold mb-2 text-gray-700">Your Reflection</h3>
+                <div id="reflection-response" class="p-4 bg-purple-50 rounded-xl text-gray-800 italic border-l-4 border-purple-300">
+                    <!-- The reflection will be populated here -->
+                </div>
+            </div>
+
+            <div id="reflection-summary" class="mt-4 mb-6 p-4 bg-gray-100 rounded-xl text-gray-700 italic border-l-4 border-blue-500 hidden"></div>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button id="copy-button" class="action-button px-8 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 shadow-lg">
+                    Copy to Clipboard
+                </button>
+                <button id="start-over" class="action-button px-8 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 shadow-lg">
+                    Start Over
+                </button>
+                <button id="back-to-naming" class="back-button px-8 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 shadow-lg">
+                    &larr; Back
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Data structure for emotions, words, prompts, summaries, and now, reflections
+        const emotionsData = {
+            calm: {
+                words: [{text: "peaceful", emoji: "🧘"}, {text: "relaxed", emoji: "😌"}, {text: "tranquil", emoji: "🌿"}, {text: "content", emoji: "😊"}, {text: "serene", emoji: "💧"}],
+                prompts: [
+                    "What made you feel so peaceful today?",
+                    "Can you describe a place where you feel most tranquil?",
+                    "What helps you feel calm and centered?",
+                    "What does being 'relaxed' feel like in your body right now?"
+                ],
+                summary: "It's wonderful to feel a sense of calm. Taking a moment to acknowledge this feeling can help you carry it with you throughout the day.",
+                reflections: [
+                    "Recognizing your calm state is a powerful form of self-awareness. It's a sign that you've found a peaceful moment, and that's worth celebrating.",
+                    "The feeling of tranquility is a wonderful gift. By simply noticing it, you're strengthening your ability to find moments of peace in the future.",
+                    "Holding onto a sense of serenity can be a anchor in a busy world. Acknowledging this feeling is a great way to validate your inner state."
+                ]
+            },
+            happy: {
+                words: [{text: "joyful", emoji: "😄"}, {text: "excited", emoji: "🤩"}, {text: "elated", emoji: "🥳"}, {text: "cheerful", emoji: "😁"}, {text: "focused", emoji: "🎯"}, {text: "hopeful", emoji: "✨"}, {text: "playful", emoji: "😜"}],
+                prompts: [
+                    "What made you feel so happy today? Describe that moment.",
+                    "What is something you're looking forward to with excitement?",
+                    "Can you describe a time when you felt truly joyful?",
+                    "What's one thing you can do to hold on to this cheerful feeling?"
+                ],
+                summary: "Happiness is a great energy to explore! By reflecting on its source, you can find ways to invite more of it into your life.",
+                reflections: [
+                    "It's a beautiful thing to feel joy. Taking the time to reflect on what brings you happiness can help you find more of it in your life.",
+                    "Your cheerful energy is a wonderful thing! Acknowledging it and sharing it with others can create even more positive feelings.",
+                    "When you feel a sense of excitement, it's a signal that you're on a path that feels right for you. Keep following that feeling!"
+                ]
+            },
+            sad: {
+                words: [{text: "disappointed", emoji: "😞"}, {text: "lonely", emoji: "😔"}, {text: "frustrated", emoji: "😤"}, {text: "tired", emoji: "😴"}, {text: "down", emoji: "😥"}, {text: "upset", emoji: "😢"}, {text: "melancholy", emoji: "🌧️"}],
+                prompts: [
+                    "What's on your mind? What has made you feel sad?",
+                    "Can you name a small thing that might help you feel a little better?",
+                    "What's one thing you can do to take care of yourself right now?",
+                    "It's okay to feel upset. What's one gentle action you can take to honor this feeling?"
+                ],
+                summary: "It's important to acknowledge and process sadness. By giving yourself space to reflect, you can begin to understand and move through it.",
+                reflections: [
+                    "It's okay to feel sad. You've taken an important step by simply naming this feeling and giving yourself space to sit with it.",
+                    "Feelings of sadness can be heavy. Be kind to yourself today. You are strong for acknowledging this and reflecting on it.",
+                    "Sometimes all we need is a moment to process. Your journal entry is a brave act of self-care, and it shows great strength."
+                ]
+            },
+            energetic: {
+                words: [{text: "motivated", emoji: "💪"}, {text: "enthusiastic", emoji: "🚀"}, {text: "inspired", emoji: "💡"}, {text: "lively", emoji: "💃"}, {text: "focused", emoji: "🔍"}, {text: "creative", emoji: "🎨"}, {text: "driven", emoji: "🏎️"}],
+                prompts: [
+                    "What's giving you this burst of energy today?",
+                    "What are you feeling motivated to do?",
+                    "Describe a time you felt inspired to take action.",
+                    "How can you channel this lively energy into something productive?"
+                ],
+                summary: "Embracing your energy can be powerful. This is a great time to be creative and pursue the things that you're passionate about.",
+                reflections: [
+                    "That burst of energy is a sign that you're connected to what you love. It's a great time to act on that feeling and see where it takes you.",
+                    "It's wonderful to feel motivated! By reflecting on what's driving you, you can make the most of this powerful feeling.",
+                    "This lively energy is a force for good. You're ready to take on the world, and that's an incredible feeling to honor."
+                ]
+            },
+            anxious: {
+                words: [{text: "worried", emoji: "😟"}, {text: "nervous", emoji: "😬"}, {text: "stressed", emoji: "😰"}, {text: "overwhelmed", emoji: "🤯"}, {text: "restless", emoji: "🏃"}, {text: "on edge", emoji: "😬"}],
+                prompts: [
+                    "What's causing this feeling of anxiety or worry?",
+                    "What's one small step you can take to feel more in control?",
+                    "Describe how this feeling feels in your body. Where do you feel it?",
+                    "What is one thought you can replace your anxious thought with?"
+                ],
+                summary: "It can be difficult to manage anxiety. By acknowledging this feeling, you've taken the first step toward finding calm and coping with it.",
+                reflections: [
+                    "It's normal to feel anxious sometimes. The fact that you're exploring this feeling is a sign of great strength and self-awareness.",
+                    "Acknowledge your anxiety without judgment. You've taken the first brave step by simply naming it and writing about it.",
+                    "Anxiety can feel overwhelming, but you're not alone in this. Your reflection is an act of courage, and you're already on your way to finding a sense of peace."
+                ]
+            },
+            bored: {
+                words: [{text: "uninterested", emoji: "😐"}, {text: "restless", emoji: "😩"}, {text: "dull", emoji: "🌫️"}, {text: "lethargic", emoji: "🐌"}, {text: "unfocused", emoji: "😵"}],
+                prompts: [
+                    "What do you think is causing you to feel bored?",
+                    "If you could do anything right now, what would it be?",
+                    "Can you find one small thing in your environment to focus on?",
+                    "What is a new thing you could try to feel more engaged?"
+                ],
+                summary: "Boredom can be a signal that you're ready for something new. Take this moment to reflect on what you truly want to do next.",
+                reflections: [
+                    "Boredom can be a surprisingly useful feeling. It's a sign that your mind is ready for a new challenge or a fresh perspective.",
+                    "Feeling unmotivated is a chance to reset. By exploring your boredom, you can uncover what you're truly passionate about.",
+                    "It's okay to feel dull. Taking a moment to reflect on what could make your day more interesting is a powerful way to take control."
+                ]
+            }
+        };
+
+        // Get references to all the main elements
+        const discoverySection = document.getElementById('discovery-section');
+        const namingSection = document.getElementById('naming-section');
+        const reflectionSection = document.getElementById('reflection-section');
+
+        const orbCards = document.querySelectorAll('.orb-card');
+        const namingTitle = document.getElementById('naming-title');
+        const wordCloud = document.getElementById('word-cloud');
+        const reflectionTitle = document.getElementById('reflection-title');
+        const reflectionPrompt = document.getElementById('reflection-prompt');
+        const journalArea = document.getElementById('journal-area');
+        const copyButton = document.getElementById('copy-button');
+        const startOverButton = document.getElementById('start-over');
+        const backToDiscoveryButton = document.getElementById('back-to-discovery');
+        const backToNamingButton = document.getElementById('back-to-naming');
+        const messageBox = document.getElementById('message-box');
+        const reflectionSummary = document.getElementById('reflection-summary');
+        
+        // Reflection elements
+        const getInsightButton = document.getElementById('get-insight-button');
+        const reflectionResponseContainer = document.getElementById('reflection-response-container');
+        const reflectionResponseDiv = document.getElementById('reflection-response');
+        
+        // Variable to hold the typing timeout ID
+        let typingTimer;
+        let selectedCategory; // Store the selected category to use for reflections
+
+        // Initialize a simple synth for a subtle click sound
+        const synth = new Tone.Synth().toDestination();
+
+        // Helper function to show a specific section and hide others
+        function showSection(sectionToShowId) {
+            const sections = [discoverySection, namingSection, reflectionSection];
+            sections.forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionToShowId).classList.remove('hidden');
+        }
+
+        // --- Event Listeners ---
+
+        // Listen for clicks on the initial emotion orbs
+        orbCards.forEach(card => {
+            card.addEventListener('click', () => {
+                selectedCategory = card.getAttribute('data-category');
+                populateWordCloud(selectedCategory);
+                showSection('naming-section');
+                namingTitle.textContent = `Exploring "${selectedCategory}" feelings`;
+            });
+        });
+
+        // Populate the word cloud with specific emotion words
+        function populateWordCloud(category) {
+            wordCloud.innerHTML = '';
+            const words = emotionsData[category].words;
+            words.forEach(wordObj => {
+                const button = document.createElement('button');
+                button.innerHTML = `${wordObj.text} ${wordObj.emoji}`;
+                button.setAttribute('data-word', wordObj.text);
+                button.classList.add('emotion-button', 'px-6', 'py-3', 'bg-gray-100', 'text-gray-700', 'rounded-full', 'font-medium', 'hover:bg-gray-200', 'hover:text-blue-600', 'transition-all', 'duration-200', 'shadow-md');
+                wordCloud.appendChild(button);
+
+                // Add click listener to each emotion word button
+                button.addEventListener('click', () => {
+                    const chosenWord = button.getAttribute('data-word');
+                    populateReflectionSection(selectedCategory, chosenWord);
+                    showSection('reflection-section');
+                    // Play a soft sound effect
+                    synth.triggerAttackRelease("C4", "8n");
+                });
+            });
+        }
+
+        // Populate the reflection section with a dynamic prompt and summary
+        function populateReflectionSection(category, chosenWord) {
+            const prompts = emotionsData[category].prompts;
+            const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+
+            reflectionTitle.textContent = `Reflecting on "${chosenWord}"`;
+            reflectionPrompt.textContent = randomPrompt;
+            journalArea.value = ''; // Clear the text area for the new prompt
+
+            // Add the new input listener for automatic reflection
+            journalArea.addEventListener('input', handleJournalInput);
+
+            // Show and set the dynamic summary
+            reflectionSummary.textContent = emotionsData[category].summary;
+            reflectionSummary.classList.remove('hidden');
+            
+            // Hide previous reflection response on new reflection
+            reflectionResponseContainer.classList.add('hidden');
+            reflectionResponseDiv.textContent = '';
+        }
+        
+        // Function to handle automatic reflection on typing pause
+        function handleJournalInput() {
+            // Clear any existing timer
+            clearTimeout(typingTimer);
+            // Set a new timer to call getReflection after 2 seconds
+            typingTimer = setTimeout(() => {
+                getReflection();
+            }, 2000); // 2000ms delay
+        }
+
+        // Copy the journal text to the clipboard
+        copyButton.addEventListener('click', () => {
+            journalArea.select();
+            document.execCommand('copy');
+            showMessage("Copied to clipboard!");
+        });
+
+        // Function to show a temporary message
+        function showMessage(text) {
+            messageBox.textContent = text;
+            messageBox.classList.add('show');
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
+
+        // Back buttons functionality
+        backToDiscoveryButton.addEventListener('click', () => showSection('discovery-section'));
+        backToNamingButton.addEventListener('click', () => showSection('naming-section'));
+        startOverButton.addEventListener('click', () => showSection('discovery-section'));
+        
+        // --- Self-Contained Reflection Feature ---
+        
+        // Add event listener for the "Get Reflection" button
+        getInsightButton.addEventListener('click', getReflection);
+
+        // Function to get a pre-defined reflection
+        function getReflection() {
+            // Check if a category has been selected
+            if (!selectedCategory) {
+                showMessage("Please select a feeling first!");
+                return;
+            }
+            
+            // Show the reflection container
+            reflectionResponseContainer.classList.remove('hidden');
+
+            // Select a random reflection from the chosen category
+            const reflections = emotionsData[selectedCategory].reflections;
+            const randomReflection = reflections[Math.floor(Math.random() * reflections.length)];
+            
+            // Display the reflection
+            reflectionResponseDiv.textContent = randomReflection;
+        }
+    </script>
+</body>
+</html>
