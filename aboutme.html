@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Emotional Compass</title>
+    <!-- Tailwind CSS via CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- D3.js library from CDN -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1000px;
+            gap: 2rem;
+        }
+        
+        @media (min-width: 1024px) {
+            .main-container {
+                flex-direction: row;
+                justify-content: center;
+                align-items: flex-start;
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .info-card {
+            width: 100%;
+            max-width: 400px;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .arc-path {
+            cursor: pointer;
+            stroke: #000;
+            stroke-width: 0.5;
+            transition: transform 0.3s ease-in-out, filter 0.3s ease-in-out;
+        }
+
+        .arc-path:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        .emotion-label {
+            font-size: 14px;
+            font-weight: 500;
+            fill: #333;
+            pointer-events: none;
+        }
+        
+        .core-emotion-label {
+            font-size: 16px;
+            font-weight: 500;
+            text-anchor: middle;
+            fill: #333;
+            pointer-events: none;
+        }
+        
+        .outer-emotion-label {
+            font-size: 12px;
+            font-weight: 500;
+            text-anchor: middle;
+            fill: #333;
+            pointer-events: none;
+        }
+
+        .center-label {
+            font-size: 24px;
+            font-weight: bold;
+            text-anchor: middle;
+            fill: #333;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+    <main class="w-full max-w-5xl p-6 md:p-12">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-12 text-gray-800">The Emotional Compass</h1>
+        
+        <div class="main-container">
+            <div id="chart" class="chart-container"></div>
+            
+            <!-- Information Card -->
+            <div id="info-card" class="info-card">
+                <h2 id="card-title" class="text-3xl font-extrabold text-gray-900 text-center"></h2>
+                <div class="space-y-4 text-gray-700">
+                    <p><span class="font-bold">Similar words:</span> <span id="card-similar"></span></p>
+                    <p><span class="font-bold">Typical sensations:</span> <span id="card-sensations"></span></p>
+                    <p><span class="font-bold">What is it telling you?</span> <span id="card-meaning"></span></p>
+                    <p><span class="font-bold">How can it help?</span> <span id="card-help"></span></p>
+                    <p><span class="font-bold">Opposite emotion:</span> <span id="card-opposite"></span></p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Data structure for the emotions and their descriptions
+        const emotionsData = {
+            'i-feel': {
+                title: 'I Feel...',
+                similar: 'The center of the wheel, for initial thought.',
+                sensations: 'A starting point for emotional discovery.',
+                meaning: 'Acknowledge your feelings and begin to explore them.',
+                help: 'Helps to center yourself before diving deeper into emotions.',
+                color: '#fcfcfc',
+                image: 'https://placehold.co/40x40/fcfcfc/000000?text=I+Feel...'
+            },
+            happy: {
+                title: 'Happy',
+                similar: 'Joyful, content, delighted',
+                sensations: 'Lightness in the body, smiling, warmth',
+                meaning: 'You are experiencing positive and pleasant feelings.',
+                help: 'Focus on what brings you joy to build a positive state.',
+                opposite: 'Sad',
+                color: '#84c688',
+                image: 'https://placehold.co/40x40/84c688/ffffff?text=Happy'
+            },
+            excited: {
+                title: 'Excited',
+                similar: 'Eager, thrilled, energetic',
+                sensations: 'Racing heart, tingling, high energy',
+                meaning: 'Anticipation of something good.',
+                help: 'Use this energy to motivate action towards a goal.',
+                opposite: 'Depressed',
+                color: '#71b576'
+            },
+            enthusiastic: {
+                title: 'Enthusiastic',
+                similar: 'Passionate, lively, zealous',
+                sensations: 'Vigor, strong interest, desire to participate',
+                meaning: 'Deep engagement and enjoyment in an activity.',
+                help: 'Channel this passion into creative or productive tasks.',
+                opposite: 'Miserable',
+                color: '#61bb6d'
+            },
+            cheerful: {
+                title: 'Cheerful',
+                similar: 'Joyful, bright, happy',
+                sensations: 'Smiling, feeling of lightness',
+                meaning: 'A light-hearted and optimistic state.',
+                help: 'Spread your positivity to others and enjoy the moment.',
+                opposite: 'Disgusted',
+                color: '#66ab71'
+            },
+            loving: {
+                title: 'Loving',
+                similar: 'Caring, fond, affectionate',
+                sensations: 'Warmth in the chest, gentle feelings',
+                meaning: 'Connection and care for another person or thing.',
+                help: 'Strengthens bonds and encourages compassion.',
+                opposite: 'Hateful',
+                color: '#f7d246' // Unified color
+            },
+            affectionate: {
+                title: 'Affectionate',
+                similar: 'Warm, tender, kind',
+                sensations: 'Gentle touch, closeness, comfort',
+                meaning: 'A warm feeling of care and fondness.',
+                help: 'Helps to show support and build intimacy.',
+                opposite: 'Hateful',
+                color: '#f7d246' // Unified color
+            },
+            surprise: {
+                title: 'Surprise',
+                similar: 'Shocked, astonished, startled',
+                sensations: 'Gasp, wide eyes, quickened heart rate',
+                meaning: 'An unexpected event has occurred.',
+                help: 'Use this moment to re-evaluate your assumptions.',
+                opposite: 'Calm',
+                color: '#83c8de',
+                image: 'https://placehold.co/40x40/83c8de/ffffff?text=Surprise'
+            },
+            elation: {
+                title: 'Elation',
+                similar: 'Jubilant, ecstatic, euphoric',
+                sensations: 'Exhilaration, a rush of excitement',
+                meaning: 'A sudden, intense feeling of happiness.',
+                help: 'Celebrate the moment and the positive surprise.',
+                opposite: 'Depressed',
+                color: '#92d9f4'
+            },
+            amazed: {
+                title: 'Amazed',
+                similar: 'Stunned, astonished, awed',
+                sensations: 'Sense of wonder, silent awe',
+                meaning: 'Something has exceeded your expectations.',
+                help: 'Allows you to appreciate and find beauty in the unexpected.',
+                opposite: 'Disgusted',
+                color: '#a0e1f7'
+            },
+            moved: {
+                title: 'Moved',
+                similar: 'Touched, inspired, sentimental',
+                sensations: 'Lump in throat, tearful eyes',
+                meaning: 'You are affected emotionally by an event.',
+                help: 'Helps you connect with others and practice empathy.',
+                opposite: 'Disgusted',
+                color: '#b0e9f9'
+            },
+            fear: {
+                title: 'Fear',
+                similar: 'Scared, worried, anxious',
+                sensations: 'Racing heart, sweaty palms, urge to run',
+                meaning: 'You perceive a direct threat or danger.',
+                help: 'Protects you from harm and alerts you to danger.',
+                opposite: 'Courageous',
+                color: '#f5915d',
+                image: 'https://placehold.co/40x40/f5915d/ffffff?text=Fear'
+            },
+            scared: {
+                title: 'Scared',
+                similar: 'Afraid, panicked, terrified',
+                sensations: 'Physical tension, heart pounding',
+                meaning: 'A response to an immediate, perceived danger.',
+                help: 'Prepares you for a "fight or flight" response.',
+                opposite: 'Brave',
+                color: '#f38f4d'
+            },
+            frightened: {
+                title: 'Frightened',
+                similar: 'Alarmed, spooked, unnerved',
+                sensations: 'Shaking, goosebumps, heightened senses',
+                meaning: 'A sudden, strong feeling of fear.',
+                help: 'Helps you stay alert to your surroundings.',
+                opposite: 'Confident',
+                color: '#f18e4c'
+            },
+            terrified: {
+                title: 'Terrified',
+                similar: 'Horrified, panicked, petrified',
+                sensations: 'Frozen, unable to move or think clearly',
+                meaning: 'An overwhelming sense of dread.',
+                help: 'Triggers a "freeze" response to overwhelming threat.',
+                opposite: 'Courageous',
+                color: '#ef8c4a'
+            },
+            anger: {
+                title: 'Anger',
+                similar: 'Frustrated, enraged, hostile',
+                sensations: 'Flushed face, tense muscles, increased heart rate',
+                meaning: 'You feel a strong sense of injustice or offense.',
+                help: 'Provides energy to stand up for yourself or others.',
+                opposite: 'Peaceful',
+                color: '#e35a51',
+                image: 'https://placehold.co/40x40/e35a51/ffffff?text=Anger'
+            },
+            annoyed: {
+                title: 'Annoyed',
+                similar: 'Irritated, frustrated, vexed',
+                sensations: 'Tightening jaw, furrowed brow',
+                meaning: 'Experiencing a minor irritation.',
+                help: 'Alerts you to a problem that needs attention.',
+                opposite: 'Relaxed',
+                color: '#f1746a'
+            },
+            furious: {
+                title: 'Furious',
+                similar: 'Rage, enraged, infuriated',
+                sensations: 'Shaking, loss of control, high energy',
+                meaning: 'Overwhelming, intense anger.',
+                help: 'Can be a signal that a boundary has been crossed.',
+                opposite: 'Calm',
+                color: '#f6897f'
+            },
+            hateful: {
+                title: 'Hateful',
+                similar: 'Loathing, contemptuous, spiteful',
+                sensations: 'Desire to harm, intense dislike',
+                meaning: 'Extreme dislike or animosity.',
+                help: 'Helps to set strong boundaries with others.',
+                opposite: 'Loving',
+                color: '#f9a195'
+            },
+            sad: {
+                title: 'Sad',
+                similar: 'Unhappy, dejected, sorrowful',
+                sensations: 'Heaviness, tears, lethargy',
+                meaning: 'You have experienced a loss or disappointment.',
+                help: 'Allows you to process grief and seek comfort.',
+                opposite: 'Happy',
+                color: '#7181c0',
+                image: 'https://placehold.co/40x40/7181c0/ffffff?text=Sad'
+            },
+            depressed: {
+                title: 'Depressed',
+                similar: 'Miserable, hopeless, low',
+                sensations: 'Persistent sadness, lack of energy',
+                meaning: 'A profound, lasting sadness.',
+                help: 'Acknowledge the feeling and seek professional support if needed.',
+                opposite: 'Elation',
+                color: '#8193d1'
+            },
+            miserable: {
+                title: 'Miserable',
+                similar: 'Wretched, unhappy, distressed',
+                sensations: 'Emotional pain, feeling of being in a bad place',
+                meaning: 'A deep state of unhappiness or discomfort.',
+                help: 'Acknowledge the feeling and work towards improving your situation.',
+                opposite: 'Cheerful',
+                color: '#8fa4de'
+            },
+            disgusted: {
+                title: 'Disgusted',
+                similar: 'Repulsed, offended, revolted',
+                sensations: 'Nausea, tightening in throat',
+                meaning: 'You find something repulsive or morally wrong.',
+                help: 'Protects you from harmful substances or ideas.',
+                opposite: 'Amazed',
+                color: '#a1b8e8'
+            },
+            acceptance: {
+                title: 'Acceptance',
+                similar: 'Open, Welcoming',
+                sensations: 'Peaceful',
+                meaning: 'We are in this together',
+                help: 'Create relationships, community',
+                opposite: 'Disgusted',
+                color: '#f7d246' // Unified color
+            },
+            peaceful: {
+                title: 'Peaceful',
+                similar: 'Calm, serene, tranquil',
+                sensations: 'Relaxed muscles, slow breathing, sense of rest',
+                meaning: 'A state of inner quiet and freedom from agitation.',
+                help: 'Focus on this feeling to reduce stress and find clarity.',
+                opposite: 'Anger',
+                color: '#f7d246' // Unified color
+            },
+            calm: {
+                title: 'Calm',
+                similar: 'Relaxed, composed, placid',
+                sensations: 'Steady heartbeat, deep breaths, lack of tension',
+                meaning: 'You are in control and at ease.',
+                help: 'Helps to maintain composure during stressful situations.',
+                opposite: 'Surprise',
+                color: '#a894b9' // This is the new color for Calm, moved to the sad group.
+            },
+            boredom: {
+                title: 'Boredom',
+                similar: 'Apathetic, restless, weary',
+                sensations: 'Lack of stimulation, low energy',
+                meaning: 'A signal that you need a change of pace or activity.',
+                help: 'Motivates you to seek new experiences.',
+                opposite: 'Interest',
+                color: '#a894b9' // The original Boredom color, kept for now.
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const width = 600;
+            const height = 600;
+            const radius = Math.min(width, height) / 2;
+            const coreRadius = radius * 0.3;
+            const innerRingRadius = radius * 0.7;
+            const outerRingRadius = radius;
+            
+            // The order of these arrays is crucial for the visual layout
+            const coreEmotions = ['happy', 'surprise', 'fear', 'anger', 'sad', 'acceptance'];
+            const outerEmotions = [
+                'excited', 'enthusiastic', 'cheerful',
+                'elation', 'amazed', 'moved',
+                'scared', 'frightened', 'terrified',
+                'annoyed', 'furious', 'hateful',
+                'depressed', 'miserable', 'disgusted',
+                'peaceful', 'loving', 'affectionate'
+            ];
+            
+            const svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g")
+                .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+            const spinningGroup = svg.append("g").attr("class", "spinning-group");
+            
+            // Central circle (static)
+            svg.append("circle")
+                .attr("r", coreRadius)
+                .attr("fill", "#fcfcfc")
+                .attr("stroke", "#000")
+                .attr("stroke-width", "0.5")
+                .attr("data-emotion", "i-feel")
+                .attr("class", "arc-path");
+            
+            svg.append("text")
+                .attr("class", "center-label")
+                .attr("y", "0")
+                .attr("x", "0")
+                .text("I Feel...");
+
+            // Core emotion groups and labels
+            const pieCore = d3.pie()
+                .sort(null)
+                .value(1);
+
+            const arcCore = d3.arc()
+                .innerRadius(coreRadius)
+                .outerRadius(innerRingRadius);
+            
+            const coreArcs = spinningGroup.selectAll(".core-arc")
+                .data(pieCore(coreEmotions))
+                .enter().append("g")
+                .attr("class", "core-arc");
+            
+            coreArcs.append("path")
+                .attr("d", arcCore)
+                .attr("fill", d => emotionsData[d.data].color)
+                .attr("class", "arc-path")
+                .attr("data-emotion", d => d.data);
+
+            coreArcs.append("text")
+                .attr("transform", d => {
+                    const centroid = arcCore.centroid(d);
+                    return `translate(${centroid[0]}, ${centroid[1]})`;
+                })
+                .attr("dy", "0.35em")
+                .attr("class", "core-emotion-label")
+                .text(d => d.data);
+
+            // Outer rings
+            const pieOuter = d3.pie()
+                .sort(null)
+                .value(1);
+            
+            const arcOuter = d3.arc()
+                .innerRadius(innerRingRadius)
+                .outerRadius(outerRingRadius);
+            
+            const outerArcs = spinningGroup.selectAll(".outer-arc")
+                .data(pieOuter(outerEmotions))
+                .enter().append("g")
+                .attr("class", "outer-arc");
+
+            outerArcs.append("path")
+                .attr("d", arcOuter)
+                .attr("fill", d => emotionsData[d.data].color)
+                .attr("class", "arc-path")
+                .attr("data-emotion", d => d.data);
+            
+            outerArcs.append("text")
+                .attr("transform", d => {
+                    const centroid = arcOuter.centroid(d);
+                    return `translate(${centroid[0]}, ${centroid[1]})`;
+                })
+                .attr("dy", "0.35em")
+                .attr("class", "outer-emotion-label")
+                .text(d => d.data);
+
+            // Information card functionality
+            const infoCard = d3.select("#info-card");
+            
+            d3.selectAll(".arc-path").on("click", function(event) {
+                const emotionName = d3.select(this).attr("data-emotion");
+                const data = emotionsData[emotionName];
+                if (data) {
+                    d3.select("#card-title").text(data.title);
+                    d3.select("#card-similar").text(data.similar || 'N/A');
+                    d3.select("#card-sensations").text(data.sensations || 'N/A');
+                    d3.select("#card-meaning").text(data.meaning || 'N/A');
+                    d3.select("#card-help").text(data.help || 'N/A');
+                    d3.select("#card-opposite").text(data.opposite || 'N/A');
+                    infoCard.style("display", "flex");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
